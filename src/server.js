@@ -1,39 +1,43 @@
-const express = require("express");
-const cors = require("cors");
-const dotenv = require("dotenv");
-const pinoHttp = require("pino-http");
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import pinoHttp from 'pino-http';
 
 dotenv.config();
 
 const app = express();
 
-// Middleware
 app.use(cors());
 app.use(express.json());
-app.use(pinoHttp());
+
+app.use(
+  pinoHttp({
+    transport: process.env.NODE_ENV !== 'production' ? { target: 'pino-pretty' } : undefined,
+  })
+);
 
 // Routes
-app.get("/notes", (req, res) => {
-  res.status(200).json({ message: "Retrieved all notes" });
+app.get('/notes', (req, res) => {
+  res.status(200).json({ message: 'Retrieved all notes' });
 });
 
-app.get("/notes/:noteId", (req, res) => {
+app.get('/notes/:noteId', (req, res) => {
   const { noteId } = req.params;
   res.status(200).json({ message: `Retrieved note with ID: ${noteId}` });
 });
 
-app.get("/test-error", () => {
-  throw new Error("Simulated server error");
+app.get('/test-error', () => {
+  throw new Error('Simulated server error');
 });
 
-// 404 middleware
+// 404
 app.use((req, res) => {
-  res.status(404).json({ message: "Route not found" });
+  res.status(404).json({ message: 'Route not found' });
 });
 
-// 500 error handler middleware
+// 500
 app.use((err, req, res, next) => {
-  req.log?.error({ err }, "Unhandled error");
+  req.log?.error({ err }, 'Unhandled error');
   res.status(500).json({ message: err.message });
 });
 
