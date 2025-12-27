@@ -13,6 +13,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "celebrate": "^15.0.3",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^4.22.1",
