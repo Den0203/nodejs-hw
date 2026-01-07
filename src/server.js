@@ -1,3 +1,6 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
@@ -12,7 +15,6 @@ const app = express();
 app.use(pino());
 app.use(express.json());
 app.use(cookieParser());
-
 app.use(
   cors({
     origin: true,
@@ -30,14 +32,15 @@ app.use('/notes', notesRoutes);
 app.use((err, _req, res, _next) => {
   const status = err.status || 500;
   const message = err.message || 'Internal Server Error';
-
   res.status(status).json({ message });
 });
 
 const PORT = process.env.PORT || 3000;
 
+console.log('MongoDB URI:', process.env.MONGO_URL);
+
 mongoose
-  .connect(process.env.MONGODB_URI)
+  .connect(process.env.MONGO_URL)
   .then(() => {
     console.log('MongoDB connected');
     app.listen(PORT, () => {
