@@ -25,7 +25,7 @@ app.use(express.json());
 app.use(cookieParser());
 
 app.use(authRoutes);
-app.use(notesRoutes);
+app.use('/notes', notesRoutes);
 
 app.use(errors());
 
