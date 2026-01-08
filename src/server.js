@@ -1,20 +1,22 @@
-import dotenv from 'dotenv';
-dotenv.config();
-
 import express from 'express';
-import mongoose from 'mongoose';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import pino from 'pino-http';
+import { errors } from 'celebrate';
 
 import authRoutes from './routes/authRoutes.js';
 import notesRoutes from './routes/notesRoutes.js';
+
+import { connectMongoDB } from './db/connectMongoDB.js';
+import { notFoundHandler } from './middleware/notFoundHandler.js';
+import { errorHandler } from './middleware/errorHandler.js';
 
 const app = express();
 
 app.use(pino());
 app.use(express.json());
 app.use(cookieParser());
+
 app.use(
   cors({
     origin: true,
@@ -26,28 +28,23 @@ app.get('/', (_req, res) => {
   res.send('API is running');
 });
 
-app.use('/auth', authRoutes);
-app.use('/notes', notesRoutes);
+app.use(authRoutes);
+app.use(notesRoutes);
 
-app.use((err, _req, res, _next) => {
-  const status = err.status || 500;
-  const message = err.message || 'Internal Server Error';
-  res.status(status).json({ message });
-});
+app.use(errors());
+
+app.use(notFoundHandler);
+
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
 
-console.log('MongoDB URI:', process.env.MONGO_URL);
+const startServer = async () => {
+  await connectMongoDB();
 
-mongoose
-  .connect(process.env.MONGO_URL)
-  .then(() => {
-    console.log('MongoDB connected');
-    app.listen(PORT, () => {
-      console.log(`Server started on port ${PORT}`);
-    });
-  })
-  .catch((err) => {
-    console.error('DB connection error', err);
-    process.exit(1);
+  app.listen(PORT, () => {
+    console.log(`Server started on port ${PORT}`);
   });
+};
+
+startServer();
