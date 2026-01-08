@@ -1,10 +1,9 @@
 import crypto from 'crypto';
 import { Session } from '../models/session.js';
 import { FIFTEEN_MINUTES, ONE_DAY } from '../constants/time.js';
-
-export async function createSession(userId) {
-  const accessToken = crypto.randomUUID();
-  const refreshToken = crypto.randomUUID();
+export const createSession = async (userId) => {
+  const accessToken = crypto.randomBytes(30).toString('hex');
+  const refreshToken = crypto.randomBytes(30).toString('hex');
 
   const session = await Session.create({
     userId,
@@ -15,9 +14,9 @@ export async function createSession(userId) {
   });
 
   return session;
-}
+};
 
-export function setSessionCookies(res, session) {
+export const setSessionCookies = (res, session) => {
   const cookieOptions = {
     httpOnly: true,
     secure: true,
@@ -38,4 +37,4 @@ export function setSessionCookies(res, session) {
     ...cookieOptions,
     maxAge: ONE_DAY,
   });
-}
+};

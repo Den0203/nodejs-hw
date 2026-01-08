@@ -1,6 +1,6 @@
-import mongoose from 'mongoose';
+import { Schema, model } from 'mongoose';
 
-const userSchema = new mongoose.Schema(
+const userSchema = new Schema(
   {
     username: {
       type: String,
@@ -18,16 +18,8 @@ const userSchema = new mongoose.Schema(
       minlength: 8,
     },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
-
-userSchema.methods.toJSON = function () {
-  const obj = this.toObject();
-  delete obj.password;
-  return obj;
-};
 
 userSchema.pre('save', function (next) {
   if (!this.username) {
@@ -36,4 +28,10 @@ userSchema.pre('save', function (next) {
   next();
 });
 
-export const User = mongoose.model('User', userSchema);
+userSchema.methods.toJSON = function () {
+  const obj = this.toObject();
+  delete obj.password;
+  return obj;
+};
+
+export const User = model('User', userSchema);
