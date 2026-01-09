@@ -27,9 +27,7 @@ app.use('/auth', authRouter);
 app.use('/notes', notesRouter);
 
 app.use(errors());
-
 app.use(notFoundHandler);
-
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
