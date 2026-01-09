@@ -10,12 +10,10 @@ import {
 
 const router = Router();
 
-router.use(authenticate);
-
-router.get('/notes', getAllNotes);
-router.get('/notes/:noteId', getNoteById);
-router.post('/notes', createNote);
-router.patch('/notes/:noteId', updateNote);
-router.delete('/notes/:noteId', deleteNote);
+router.get('/notes', authenticate, getAllNotes);
+router.get('/notes/:noteId', authenticate, getNoteById);
+router.post('/notes', authenticate, createNote);
+router.patch('/notes/:noteId', authenticate, updateNote);
+router.delete('/notes/:noteId', authenticate, deleteNote);
 
 export default router;
