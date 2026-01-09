@@ -1,5 +1,6 @@
 import bcrypt from 'bcrypt';
 import createHttpError from 'http-errors';
+
 import { User } from '../models/user.js';
 import { Session } from '../models/session.js';
 import { createSession, setSessionCookies } from '../services/auth.js';
@@ -8,13 +9,17 @@ export const registerUser = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
-    const exists = await User.findOne({ email });
-    if (exists) {
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
       throw createHttpError(400, 'Email in use');
     }
 
-    const hash = await bcrypt.hash(password, 10);
-    const user = await User.create({ email, password: hash });
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = await User.create({
+      email,
+      password: hashedPassword,
+    });
 
     const session = await createSession(user._id);
     setSessionCookies(res, session);
@@ -34,8 +39,8 @@ export const loginUser = async (req, res, next) => {
       throw createHttpError(401, 'Invalid credentials');
     }
 
-    const valid = await bcrypt.compare(password, user.password);
-    if (!valid) {
+    const isValid = await bcrypt.compare(password, user.password);
+    if (!isValid) {
       throw createHttpError(401, 'Invalid credentials');
     }
 
@@ -63,7 +68,7 @@ export const refreshUserSession = async (req, res, next) => {
       throw createHttpError(401, 'Session token expired');
     }
 
-    await session.deleteOne();
+    await Session.findByIdAndDelete(session._id);
 
     const newSession = await createSession(session.userId);
     setSessionCookies(res, newSession);
@@ -86,7 +91,7 @@ export const logoutUser = async (req, res, next) => {
     res.clearCookie('refreshToken');
     res.clearCookie('sessionId');
 
-    res.status(204).send();
+    res.sendStatus(204);
   } catch (err) {
     next(err);
   }
