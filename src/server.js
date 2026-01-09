@@ -13,7 +13,13 @@ import { errorHandler } from './middleware/errorHandler.js';
 
 const app = express();
 
-app.use(cors());
+app.use(
+  cors({
+    origin: true,
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 app.use(cookieParser());
 
@@ -21,9 +27,7 @@ app.use(authRouter);
 app.use(notesRouter);
 
 app.use(errors());
-
 app.use(notFoundHandler);
-
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
