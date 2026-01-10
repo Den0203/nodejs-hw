@@ -2,7 +2,7 @@ import { Schema, model } from 'mongoose';
 
 const userSchema = new Schema(
   {
-    username: {
+    name: {
       type: String,
       trim: true,
     },
@@ -18,14 +18,16 @@ const userSchema = new Schema(
       minlength: 8,
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    versionKey: false,
+  }
 );
 
-userSchema.pre('save', function (next) {
-  if (!this.username) {
-    this.username = this.email;
+userSchema.pre('save', function () {
+  if (!this.name) {
+    this.name = this.email;
   }
-  next();
 });
 
 userSchema.methods.toJSON = function () {
