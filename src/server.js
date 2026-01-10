@@ -4,6 +4,7 @@ import cors from 'cors';
 import { errors } from 'celebrate';
 
 import { connectMongoDB } from './db/connectMongoDB.js';
+import { logger } from './middleware/logger.js';
 
 import authRouter from './routes/authRoutes.js';
 import notesRouter from './routes/notesRoutes.js';
@@ -22,6 +23,8 @@ app.use(
 
 app.use(express.json());
 app.use(cookieParser());
+
+app.use(logger);
 
 app.use('/auth', authRouter);
 app.use('/notes', notesRouter);
