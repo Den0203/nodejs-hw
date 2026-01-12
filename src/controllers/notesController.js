@@ -1,140 +1,118 @@
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
-import handlebars from 'handlebars';
-import fs from 'node:fs/promises';
-import path from 'node:path';
 import createHttpError from 'http-errors';
+import { Note } from '../models/note.js';
 
-import { User } from '../models/user.js';
-import { Session } from '../models/session.js';
-import { createSession, setSessionCookies } from '../services/auth.js';
-import { sendEmail } from '../utils/sendEmail.js';
-
-export const registerUser = async (req, res, next) => {
+export async function getAllNotes(req, res, next) {
   try {
-    const { email, password } = req.body;
+    const { page = 1, perPage = 10, tag, search = '' } = req.query;
 
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      throw createHttpError(400, 'Email in use');
+    const limit = Number(perPage);
+    const skip = (Number(page) - 1) * limit;
+
+    const baseQuery = Note.find().where('userId').equals(req.user._id);
+
+    if (tag) {
+      baseQuery.where('tag').equals(tag);
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const user = await User.create({
-      email,
-      password: hashedPassword,
-    });
-
-    const session = await createSession(user._id);
-    setSessionCookies(res, session);
-
-    res.status(201).json(user);
-  } catch (err) {
-    next(err);
-  }
-};
-
-export const loginUser = async (req, res, next) => {
-  try {
-    const { email, password } = req.body;
-
-    const user = await User.findOne({ email });
-    if (!user) {
-      throw createHttpError(401, 'Invalid credentials');
+    const hasSearch = typeof search === 'string' && search.length > 0;
+    if (hasSearch) {
+      baseQuery.where({ $text: { $search: search } });
     }
 
-    const isValid = await bcrypt.compare(password, user.password);
-    if (!isValid) {
-      throw createHttpError(401, 'Invalid credentials');
+    const countQuery = baseQuery.clone().countDocuments();
+
+    const notesQuery = baseQuery
+      .clone()
+      .skip(skip)
+      .limit(limit)
+      .sort(hasSearch ? { score: { $meta: 'textScore' } } : { createdAt: -1 });
+
+    if (hasSearch) {
+      notesQuery.select({ score: { $meta: 'textScore' } });
     }
 
-    await Session.deleteMany({ userId: user._id });
+    const [totalNotes, notes] = await Promise.all([countQuery, notesQuery.exec()]);
 
-    const session = await createSession(user._id);
-    setSessionCookies(res, session);
-
-    res.status(200).json(user);
-  } catch (err) {
-    next(err);
-  }
-};
-
-export const refreshUserSession = async (req, res, next) => {
-  try {
-    const { sessionId, refreshToken } = req.cookies;
-
-    const session = await Session.findOne({ _id: sessionId, refreshToken });
-    if (!session) {
-      throw createHttpError(401, 'Session not found');
-    }
-
-    if (session.refreshTokenValidUntil < new Date()) {
-      throw createHttpError(401, 'Session token expired');
-    }
-
-    await Session.findByIdAndDelete(session._id);
-
-    const newSession = await createSession(session.userId);
-    setSessionCookies(res, newSession);
-
-    res.status(200).json({ message: 'Session refreshed' });
-  } catch (err) {
-    next(err);
-  }
-};
-
-export const logoutUser = async (req, res, next) => {
-  try {
-    const { sessionId } = req.cookies;
-
-    if (sessionId) {
-      await Session.findByIdAndDelete(sessionId);
-    }
-
-    res.clearCookie('accessToken');
-    res.clearCookie('refreshToken');
-    res.clearCookie('sessionId');
-
-    res.sendStatus(204);
-  } catch (err) {
-    next(err);
-  }
-};
-
-export const requestResetEmail = async (req, res, next) => {
-  try {
-    const { email } = req.body;
-
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(200).json({
-        message: 'Password reset email sent successfully',
-      });
-    }
-
-    const token = jwt.sign({ sub: user._id, email }, process.env.JWT_SECRET, { expiresIn: '15m' });
-
-    const templatePath = path.resolve('src/templates/reset-password-email.html');
-    const templateSource = await fs.readFile(templatePath, 'utf-8');
-    const template = handlebars.compile(templateSource);
-
-    const html = template({
-      name: user.username,
-      link: `${process.env.FRONTEND_DOMAIN}/reset-password?token=${token}`,
-    });
-
-    await sendEmail({
-      from: process.env.SMTP_FROM,
-      to: email,
-      subject: 'Reset your password',
-      html,
-    });
+    const totalPages = Math.ceil(totalNotes / limit) || 1;
 
     res.status(200).json({
-      message: 'Password reset email sent successfully',
+      page: Number(page),
+      perPage: limit,
+      totalNotes,
+      totalPages,
+      notes,
     });
-  } catch {
-    next(createHttpError(500, 'Failed to send the email, please try again later.'));
+  } catch (err) {
+    next(err);
   }
-};
+}
+
+export async function getNoteById(req, res, next) {
+  try {
+    const { noteId } = req.params;
+
+    const note = await Note.findOne({
+      _id: noteId,
+      userId: req.user._id,
+    });
+
+    if (!note) {
+      throw createHttpError(404, 'Note not found');
+    }
+
+    res.status(200).json(note);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function createNote(req, res, next) {
+  try {
+    const note = await Note.create({
+      ...req.body,
+      userId: req.user._id,
+    });
+
+    res.status(201).json(note);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function updateNote(req, res, next) {
+  try {
+    const { noteId } = req.params;
+
+    const updated = await Note.findOneAndUpdate({ _id: noteId, userId: req.user._id }, req.body, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!updated) {
+      throw createHttpError(404, 'Note not found');
+    }
+
+    res.status(200).json(updated);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function deleteNote(req, res, next) {
+  try {
+    const { noteId } = req.params;
+
+    const deleted = await Note.findOneAndDelete({
+      _id: noteId,
+      userId: req.user._id,
+    });
+
+    if (!deleted) {
+      throw createHttpError(404, 'Note not found');
+    }
+
+    res.status(200).json(deleted);
+  } catch (err) {
+    next(err);
+  }
+}
