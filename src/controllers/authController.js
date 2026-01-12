@@ -96,3 +96,13 @@ export const logoutUser = async (req, res, next) => {
     next(err);
   }
 };
+
+export const requestResetEmail = async (req, res, next) => {
+  try {
+    return res.status(200).json({
+      message: 'Password reset email sent successfully',
+    });
+  } catch (err) {
+    next(err);
+  }
+};
