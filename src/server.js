@@ -13,6 +13,8 @@ import notesRouter from './routes/notesRoutes.js';
 import { notFoundHandler } from './middleware/notFoundHandler.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
+import userRoutes from './routes/userRoutes.js';
+
 const app = express();
 
 app.use(
@@ -29,6 +31,7 @@ app.use(logger);
 
 app.use('/auth', authRouter);
 app.use('/notes', notesRouter);
+app.use(userRoutes);
 
 app.use(errors());
 app.use(notFoundHandler);
