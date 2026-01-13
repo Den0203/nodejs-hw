@@ -9,11 +9,10 @@ import { logger } from './middleware/logger.js';
 
 import authRouter from './routes/authRoutes.js';
 import notesRouter from './routes/notesRoutes.js';
+import userRoutes from './routes/userRoutes.js';
 
 import { notFoundHandler } from './middleware/notFoundHandler.js';
 import { errorHandler } from './middleware/errorHandler.js';
-
-import userRoutes from './routes/userRoutes.js';
 
 const app = express();
 
@@ -26,15 +25,14 @@ app.use(
 
 app.use(express.json());
 app.use(cookieParser());
-
 app.use(logger);
 
 app.use('/auth', authRouter);
 app.use('/notes', notesRouter);
-app.use(userRoutes);
+app.use('/users', userRoutes);
 
-app.use(errors());
 app.use(notFoundHandler);
+app.use(errors());
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
